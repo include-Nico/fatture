@@ -1,3 +1,5 @@
+
+https://include-nico.github.io/fatture/
 # Gestionale Fatture
 
 Web app statica (HTML + CSS + JavaScript vanilla, nessun framework, nessun backend)
