@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gestionale Fatture - Ottica</title>
+
+    <link rel="icon" type="image/svg+xml" href="assets/logo-placeholder.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/logo-placeholder.svg">
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Gestionale Fatture">
+    <meta name="theme-color" content="#2c3e50">
+
+    <link rel="manifest" href="manifest.json?v=1">
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Libreria PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <header class="mobile-header">
+        <button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+        <div class="brand-mobile">
+            <img id="logo-img-mobile" src="assets/logo-placeholder.svg" alt="Logo" class="menu-logo-mobile">
+            <h2 id="app-name-mobile">Fatture</h2>
+        </div>
+        <div class="header-actions-mobile">
+            <span id="cloud-mobile" title="Stato Salvataggio"><i class="fas fa-check-circle" style="color:#2ecc71;"></i></span>
+            <button class="btn-icon" onclick="toggleTheme()"><i class="fas fa-moon" id="theme-icon-mobile"></i></button>
+        </div>
+    </header>
+
+    <div class="dashboard-layout">
+        <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+        <aside class="sidebar-menu" id="sidebar">
+            <div class="brand desktop-only">
+                <img id="logo-img-desktop" src="assets/logo-placeholder.svg" alt="Logo" class="menu-logo">
+                <h2 id="app-name-desktop">Gestionale Fatture</h2>
+            </div>
+            <nav>
+                <button class="nav-btn active" onclick="switchTab('tab-fattura', this)"><i class="fas fa-file-invoice"></i> Nuova Fattura</button>
+                <button class="nav-btn" onclick="switchTab('tab-rubrica', this)"><i class="fas fa-users"></i> Rubrica & Ricette</button>
+                <button class="nav-btn" onclick="switchTab('tab-magazzino', this)"><i class="fas fa-boxes"></i> Magazzino</button>
+                <button class="nav-btn" onclick="switchTab('tab-storico', this)"><i class="fas fa-chart-line"></i> Storico & Entrate</button>
+                <button class="nav-btn" onclick="switchTab('tab-conformita', this)"><i class="fas fa-certificate"></i> Conformità</button>
+                <button class="nav-btn" onclick="switchTab('tab-impostazioni', this)"><i class="fas fa-cog"></i> Impostazioni</button>
+            </nav>
+            <div class="sidebar-footer desktop-only">
+                <span id="cloud-desktop" title="Stato Salvataggio"><i class="fas fa-check-circle" style="color:#2ecc71;"></i> Salvato</span>
+                <button class="btn-theme" onclick="toggleTheme()"><i class="fas fa-moon" id="theme-icon-desktop"></i> Tema</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+
+            <!-- TAB FATTURA -->
+            <section id="tab-fattura" class="tab-section active">
+                <div class="app-container">
+                    <aside class="control-panel scrollable">
+                        <h2>Dati Documento</h2>
+                        <div class="input-group">
+                            <label><i class="fas fa-user-check"></i> Seleziona Cliente da Rubrica:</label>
+                            <select id="select-cliente" onchange="loadClientIntoInvoice()">
+                                <option value="">-- Seleziona o inserisci manualmente --</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="manual-client-type">
+                            <label>Tipo Cliente:</label>
+                            <div class="radio-group" style="display: flex; gap: 15px; margin-top: 5px;">
+                                <div><input type="radio" id="tipo-fisica" name="tipo_cliente" value="fisica" checked onchange="toggleClientFields()"><label for="tipo-fisica" style="display: inline;">Persona Fisica</label></div>
+                                <div><input type="radio" id="tipo-azienda" name="tipo_cliente" value="azienda" onchange="toggleClientFields()"><label for="tipo-azienda" style="display: inline;">Azienda</label></div>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>Nome / Ragione Sociale:</label>
+                            <input type="text" id="input-nome" oninput="updatePreview()" placeholder="es. Mario Rossi">
+                        </div>
+                        <div class="input-group autocomplete-container">
+                            <label>Indirizzo (Via, civico):</label>
+                            <input type="text" id="input-via" oninput="updatePreview()" placeholder="es. Via Roma 1">
+                        </div>
+                        <div class="input-row">
+                            <div class="input-group" style="flex: 2;"><label>Comune:</label><input type="text" id="input-comune" oninput="updatePreview()"></div>
+                            <div class="input-group" style="flex: 1;"><label>CAP:</label><input type="text" id="input-cap" maxlength="5" oninput="updatePreview()"></div>
+                            <div class="input-group" style="flex: 1;"><label>Prov:</label><input type="text" id="input-prov" maxlength="2" oninput="updatePreview()"></div>
+                        </div>
+                        <div class="input-group" id="group-cf">
+                            <label>Codice Fiscale:</label>
+                            <input type="text" id="input-cf" class="uppercase-input" oninput="updatePreview()">
+                        </div>
+                        <div class="input-group hidden" id="group-piva">
+                            <label>Partita IVA:</label>
+                            <input type="text" id="input-piva" oninput="updatePreview()">
+                        </div>
+                        <div class="input-group hidden" id="group-sdi">
+                            <label>Codice Destinatario (SDI) / PEC:</label>
+                            <input type="text" id="input-sdi" oninput="updatePreview()">
+                        </div>
+                        <hr>
+                        <h2>Dettagli Fattura</h2>
+                        <div class="input-row">
+                            <div class="input-group"><label>Numero:</label><input type="number" id="input-numero" oninput="updatePreview()"></div>
+                            <div class="input-group"><label>Data (Determina Anno):</label><input type="date" id="input-data" onchange="handleDateChange()"></div>
+                        </div>
+                        <div class="input-group">
+                            <label>Metodo di Pagamento:</label>
+                            <select id="input-pagamento" onchange="updatePreview()">
+                                <option value="Bonifico Bancario">Bonifico Bancario</option>
+                                <option value="Contanti">Contanti</option>
+                                <option value="Carta di Credito / Bancomat">Carta di Credito / Bancomat</option>
+                                <option value="Assegno">Assegno</option>
+                            </select>
+                        </div>
+                        <hr>
+                        <h2>Voci Fattura</h2>
+                        <div class="input-group">
+                            <label><i class="fas fa-box-open"></i> Carica dal Magazzino (opzionale):</label>
+                            <select id="invoice-inventory-select" onchange="loadItemIntoInvoice()">
+                                <option value="">-- Seleziona articolo --</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Descrizione Articolo:</label><input type="text" id="input-desc" placeholder="es. Occhiali da vista"></div>
+                        <div class="input-group"><label>Dettagli (opzionale):</label><textarea id="input-subtext" rows="2" placeholder="es. Lenti antiriflesso..."></textarea></div>
+                        <div class="input-group"><label>Prezzo Totale (€):</label><input type="number" id="input-prezzo" step="0.01" placeholder="0.00"></div>
+                        <button class="btn-add" onclick="addItem()"><i class="fas fa-plus"></i> Aggiungi Voce</button>
+                        <button class="btn-primary" onclick="generateAndSaveInvoice()"><i class="fas fa-file-pdf"></i> Salva e Scarica PDF</button>
+                    </aside>
+
+                    <button class="mobile-preview-btn desktop-hidden" onclick="toggleMobilePreview()"><i class="fas fa-search-plus"></i> Vedi Anteprima</button>
+
+                    <main class="preview-panel scrollable" id="mobile-preview-container">
+                        <button class="close-preview-btn desktop-hidden" onclick="toggleMobilePreview()"><i class="fas fa-times"></i> Chiudi Anteprima</button>
+                        <div id="invoice-preview" class="a4-page">
+                            <header class="invoice-header">
+                                <div class="logo-container"><img id="invoice-logo-img" src="assets/logo-placeholder.svg" alt="Logo" class="logo-img"></div>
+                                <div class="supplier-info">
+                                    <h2 id="prev-sup-nome">La Tua Azienda</h2>
+                                    <p id="prev-sup-piva-cf">P.IVA: - | C.F.: -</p>
+                                    <p id="prev-sup-indirizzo">Indirizzo non impostato</p>
+                                    <p id="prev-sup-email">Email: -</p>
+                                    <p><small id="prev-sup-nota">Configura i dati aziendali nella scheda "Impostazioni"</small></p>
+                                </div>
+                            </header>
+                            <div class="invoice-details">
+                                <div class="customer-info">
+                                    <h3 id="prev-label-cliente">Committente</h3>
+                                    <p id="prev-nome">Nome Cliente</p>
+                                    <p id="prev-indirizzo">Indirizzo Cliente</p>
+                                    <p id="prev-cf">C.F.: -</p>
+                                    <p id="prev-piva" style="display:none;">P.IVA: -</p>
+                                    <p id="prev-sdi" style="display:none;">Cod. Destinatario: -</p>
+                                </div>
+                                <div class="document-info">
+                                    <h3>Fattura</h3>
+                                    <p>Numero: <strong id="prev-numero">1</strong></p>
+                                    <p>Data: <strong id="prev-data">-</strong></p>
+                                </div>
+                            </div>
+                            <table class="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descrizione</th>
+                                        <th class="text-right" style="width: 100px;">Importo(€)</th>
+                                        <th data-html2canvas-ignore="true" style="width: 30px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoice-items"></tbody>
+                            </table>
+                            <div class="invoice-totals">
+                                <p>Totale Imponibile: <span id="prev-imponibile">0.00</span> €</p>
+                                <p id="prev-iva-row">IVA (Esente cod. 2.2): <span>0.00</span> €</p>
+                                <h3 class="total-large">Totale Documento: <span id="prev-totale">0.00</span> €</h3>
+                            </div>
+                            <footer class="invoice-footer">
+                                <p class="payment-method-large"><strong>Modalità di pagamento:</strong> <span id="prev-pagamento">Bonifico Bancario</span></p>
+                                <p id="prev-nota-legale"><em>Operazione ai sensi dell'art. 1, commi da 54 a 89, L. 190/2014 mod. da L. 208/2015 e L. 145/2018.</em></p>
+                                <p id="prev-nota-dispositivo"><strong>Dispositivo medico con marcatura CE.</strong></p>
+                            </footer>
+                        </div>
+                    </main>
+                </div>
+            </section>
+
+            <!-- TAB RUBRICA -->
+            <section id="tab-rubrica" class="tab-section hidden">
+                <div class="header-action rubrica-header" style="display: flex; flex-direction: column; align-items: flex-start; gap: 15px;">
+                    <h2 style="margin: 0;">Rubrica & Ricette</h2>
+                    <div class="search-actions-container-vertical">
+                        <div class="search-bar">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="search-client" placeholder="Cerca cliente per nome o CF..." onkeyup="refreshClientsTable()">
+                        </div>
+                        <button class="btn-primary btn-large-new" onclick="openClientModal()"><i class="fas fa-user-plus"></i> Crea Nuovo Cliente</button>
+                    </div>
+                </div>
+                <div class="rubrica-container">
+                    <div class="table-container rubrica-table-wrapper">
+                        <table class="data-table">
+                            <thead class="desktop-only-table">
+                                <tr><th>Nome Cliente</th><th>Codice Fiscale / P.IVA</th><th>Città</th><th>Azioni (Ricetta / Contatta)</th></tr>
+                            </thead>
+                            <tbody id="clients-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="az-index" id="az-index"></div>
+                </div>
+            </section>
+
+            <!-- TAB MAGAZZINO -->
+            <section id="tab-magazzino" class="tab-section hidden">
+                <div class="header-action" style="align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 24px;">Inventario & Magazzino</h2>
+                </div>
+                <div class="app-container" style="flex-direction: row !important; display: flex;">
+
+                    <aside class="control-panel scrollable" style="flex: 1; max-width: 400px;">
+                        <h2 id="inv-form-title">Aggiungi Articolo</h2>
+                        <form id="inventory-form" onsubmit="saveInventoryItem(event)">
+                            <input type="hidden" id="inv-id">
+                            <div class="input-group">
+                                <label>Categoria:</label>
+                                <select id="inv-categoria" onchange="toggleInventoryFields()">
+                                    <option value="montatura">Montatura</option>
+                                    <option value="lente">Lente Oftalmica</option>
+                                    <option value="accessorio">Altro / Accessorio</option>
+                                </select>
+                            </div>
+                            <div class="input-group"><label>Fornitore:</label><input type="text" id="inv-fornitore" required placeholder="es. Fornitore XYZ"></div>
+                            <div class="input-group"><label>Marca / Tipo:</label><input type="text" id="inv-marca" required placeholder="es. Marca"></div>
+                            <div class="input-group"><label>Modello / Dettagli:</label><input type="text" id="inv-modello" placeholder="es. Modello 123"></div>
+
+                            <div class="box-grigio" id="inv-frame-details">
+                                <h4 style="margin:0 0 10px 0;">Specifiche Montatura</h4>
+                                <div class="input-row">
+                                    <div class="input-group"><label>Calibro:</label><input type="text" id="inv-calibro"></div>
+                                    <div class="input-group"><label>Ponte:</label><input type="text" id="inv-ponte"></div>
+                                </div>
+                                <div class="input-row">
+                                    <div class="input-group"><label>Aste (mm):</label><input type="text" id="inv-aste"></div>
+                                    <div class="input-group"><label>Colore:</label><input type="text" id="inv-colore"></div>
+                                </div>
+                            </div>
+
+                            <div class="box-grigio hidden" id="inv-lens-details">
+                                <h4 style="margin:0 0 10px 0;">Specifiche Lente</h4>
+                                <div class="input-row">
+                                    <div class="input-group"><label>Mat/Indice:</label><input type="text" id="inv-mat"></div>
+                                    <div class="input-group"><label>Trattamento:</label><input type="text" id="inv-trat"></div>
+                                </div>
+                                <div class="input-row">
+                                    <div class="input-group"><label>Ø:</label><input type="text" id="inv-dia"></div>
+                                    <div class="input-group"><label>Colore %:</label><input type="text" id="inv-col-perc"></div>
+                                    <div class="input-group"><label>Filtro:</label><input type="text" id="inv-filtro"></div>
+                                </div>
+                            </div>
+
+                            <hr>
+                            <div class="input-row">
+                                <div class="input-group"><label>Giacenza (Q.tà):</label><input type="number" id="inv-qty" value="1"></div>
+                                <div class="input-group"><label>Prezzo Vendita (€):</label><input type="number" id="inv-prezzo" step="0.01" value="0.00"></div>
+                            </div>
+
+                            <div class="form-actions" style="display:flex; gap:10px; margin-top: 15px;">
+                                <button type="button" class="btn-add" onclick="resetInventoryForm()">Annulla</button>
+                                <button type="submit" class="btn-primary" style="margin-top:0;">Salva</button>
+                            </div>
+                        </form>
+                    </aside>
+
+                    <main class="preview-panel scrollable" style="flex: 2;">
+                        <div class="search-bar" style="margin-bottom: 20px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="search-inventory" placeholder="Cerca nel magazzino per marca, modello o fornitore..." onkeyup="refreshInventoryTable()">
+                        </div>
+                        <div class="table-container full-width">
+                            <table class="data-table">
+                                <thead class="desktop-only-table">
+                                    <tr>
+                                        <th>Categoria</th>
+                                        <th>Fornitore</th>
+                                        <th>Marca & Modello</th>
+                                        <th>Giacenza</th>
+                                        <th>Prezzo (€)</th>
+                                        <th>Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-table-body"></tbody>
+                            </table>
+                        </div>
+                    </main>
+                </div>
+            </section>
+
+            <!-- TAB STORICO -->
+            <section id="tab-storico" class="tab-section hidden">
+                <div class="header-action" style="align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0; font-size: 24px;">Dashboard Finanziaria</h2>
+                    <button class="btn-circle excel-btn" onclick="exportCSV()" title="Esporta in Excel"><i class="fas fa-file-excel"></i></button>
+                </div>
+                <div class="stats-card full-width">
+                    <h3 id="label-totale-filtrato">Fatturato Globale</h3>
+                    <h2 class="text-primary" id="total-revenue" style="font-size: 32px;">€ 0.00</h2>
+                </div>
+                <div class="chart-wrapper full-width">
+                    <div class="chart-controls">
+                        <select id="chart-mode" onchange="updateChart()">
+                            <option value="monthly">Vista Mensile (1 Anno)</option>
+                            <option value="yearly">Vista Annuale (Confronto Storico)</option>
+                        </select>
+                        <select id="chart-year" onchange="updateChart()"></select>
+                    </div>
+                    <div class="canvas-container"><canvas id="revenueChart"></canvas></div>
+                </div>
+                <div class="table-container full-width">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="margin: 0; color: var(--primary-color);">Storico Documenti</h3>
+                        <button class="btn-circle filter-btn" onclick="toggleInvoiceFilters()" title="Viaggio nel tempo e Filtri"><i class="fas fa-filter"></i></button>
+                    </div>
+                    <div id="invoice-filters" class="filter-panel hidden">
+                        <div class="input-row" style="align-items: flex-end;">
+                            <div class="input-group" style="flex: 2; margin: 0;"><label>Ricerca Cliente / Numero:</label><input type="text" id="filter-inv-search" onkeyup="refreshInvoicesTable()" placeholder="es. Rossi o 15"></div>
+                            <div class="input-group" style="flex: 1; margin: 0;"><label>Filtra Anno:</label><select id="filter-inv-year" onchange="refreshInvoicesTable()"><option value="">Tutti</option></select></div>
+                            <div class="input-group" style="flex: 1; margin: 0;"><label>Filtra Mese:</label><select id="filter-inv-month" onchange="refreshInvoicesTable()"><option value="">Tutti</option><option value="0">Gennaio</option><option value="1">Febbraio</option><option value="2">Marzo</option><option value="3">Aprile</option><option value="4">Maggio</option><option value="5">Giugno</option><option value="6">Luglio</option><option value="7">Agosto</option><option value="8">Settembre</option><option value="9">Ottobre</option><option value="10">Novembre</option><option value="11">Dicembre</option></select></div>
+                        </div>
+                    </div>
+                    <table class="data-table" id="storico-data-table">
+                        <thead class="desktop-only-table">
+                            <tr><th>N° e Anno</th><th>Data</th><th>Cliente</th><th>Metodo Pag.</th><th>Importo</th><th>Azioni</th></tr>
+                        </thead>
+                        <tbody id="invoices-table-body"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- TAB DICHIARAZIONE DI CONFORMITÀ -->
+            <section id="tab-conformita" class="tab-section hidden">
+                <datalist id="suggerimenti-fornitori-montatura"></datalist>
+                <datalist id="suggerimenti-marche-montatura"></datalist>
+                <datalist id="suggerimenti-fornitori-lenti"></datalist>
+                <datalist id="suggerimenti-tipi-lenti"></datalist>
+
+                <div class="app-container" style="flex-direction: row !important; display: flex;">
+
+                    <aside class="control-panel scrollable" style="flex: 1;">
+                        <h2>Genera Conformità</h2>
+
+                        <div class="input-group">
+                            <label><i class="fas fa-user-check"></i> Carica da Rubrica (o scrivi a mano):</label>
+                            <select id="conf-select-cliente" onchange="loadClientIntoConformity()">
+                                <option value="">-- Compila Manualmente --</option>
+                            </select>
+                        </div>
+
+                        <div class="box-grigio" style="margin-bottom: 15px;">
+                            <h4 style="margin: 0 0 10px 0;">Dati Cliente</h4>
+                            <div class="input-row">
+                                <div class="input-group" style="flex: 2;"><label>Nome e Cognome:</label><input type="text" id="conf-manual-nome" oninput="updateConformityPreview()"></div>
+                                <div class="input-group" style="flex: 1;"><label>Telefono:</label><input type="text" id="conf-manual-tel" oninput="updateConformityPreview()"></div>
+                            </div>
+                            <div class="input-group"><label>Indirizzo (Via, civico):</label><input type="text" id="conf-manual-via" oninput="updateConformityPreview()"></div>
+                            <div class="input-row">
+                                <div class="input-group"><label>Città:</label><input type="text" id="conf-manual-citta" oninput="updateConformityPreview()"></div>
+                                <div class="input-group"><label>Prov:</label><input type="text" id="conf-manual-prov" oninput="updateConformityPreview()"></div>
+                                <div class="input-group"><label>C.Fiscale:</label><input type="text" id="conf-manual-cf" class="uppercase-input" oninput="updateConformityPreview()"></div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h3>Sistema Asse e Certificazioni</h3>
+                        <div class="input-row">
+                            <div class="input-group" style="flex:2;">
+                                <label>Sistema Asse:</label>
+                                <select id="conf-sistema-asse" onchange="updateConformityPreview()">
+                                    <option value="tabo">TABO</option>
+                                    <option value="internazionale">INTERNAZIONALE</option>
+                                </select>
+                            </div>
+                            <div class="input-group" style="flex:1;"><label>Lenti CE:</label><select id="conf-lenti-ce" onchange="updateConformityPreview()"><option value="si">Sì</option><option value="no">No</option></select></div>
+                            <div class="input-group" style="flex:1;"><label>Mont. CE:</label><select id="conf-mont-ce" onchange="updateConformityPreview()"><option value="si">Sì</option><option value="no">No</option></select></div>
+                        </div>
+
+                        <div class="input-row" style="margin-top: 10px;">
+                            <div class="input-group" style="flex: 1;"><label>D.I. Lontano (mm):</label><input type="text" id="conf-dil" oninput="updateConformityPreview()"></div>
+                            <div class="input-group" style="flex: 1;"><label>D.I. Vicino (mm):</label><input type="text" id="conf-div" oninput="updateConformityPreview()"></div>
+                        </div>
+
+                        <hr>
+                        <h3>Prescrizione Optometrica</h3>
+                        <div class="rx-grid" style="display: grid; gap: 15px; background: var(--bg-color); padding: 10px; border-radius: 8px;">
+                            <div>
+                                <h4 style="margin: 0 0 5px 0; font-size: 12px; color: var(--primary-color);">Occhio Destro</h4>
+                                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                                    <span style="font-size: 10px; width: 15px;">L</span>
+                                    <input type="text" id="rx-dx-sf-l" oninput="updateConformityPreview()" placeholder="Sf" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-cil-l" oninput="updateConformityPreview()" placeholder="Cil" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-ax-l" oninput="updateConformityPreview()" placeholder="Ax" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-pr-l" oninput="updateConformityPreview()" placeholder="Pr" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-ba-l" oninput="updateConformityPreview()" placeholder="Ba" style="padding: 5px; text-align: center;">
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="font-size: 10px; width: 15px;">V</span>
+                                    <input type="text" id="rx-dx-sf-v" oninput="updateConformityPreview()" placeholder="Sf" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-cil-v" oninput="updateConformityPreview()" placeholder="Cil" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-ax-v" oninput="updateConformityPreview()" placeholder="Ax" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-pr-v" oninput="updateConformityPreview()" placeholder="Pr" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-dx-ba-v" oninput="updateConformityPreview()" placeholder="Ba" style="padding: 5px; text-align: center;">
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="margin: 0 0 5px 0; font-size: 12px; color: var(--primary-color);">Occhio Sinistro</h4>
+                                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                                    <span style="font-size: 10px; width: 15px;">L</span>
+                                    <input type="text" id="rx-sx-sf-l" oninput="updateConformityPreview()" placeholder="Sf" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-cil-l" oninput="updateConformityPreview()" placeholder="Cil" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-ax-l" oninput="updateConformityPreview()" placeholder="Ax" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-pr-l" oninput="updateConformityPreview()" placeholder="Pr" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-ba-l" oninput="updateConformityPreview()" placeholder="Ba" style="padding: 5px; text-align: center;">
+                                </div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="font-size: 10px; width: 15px;">V</span>
+                                    <input type="text" id="rx-sx-sf-v" oninput="updateConformityPreview()" placeholder="Sf" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-cil-v" oninput="updateConformityPreview()" placeholder="Cil" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-ax-v" oninput="updateConformityPreview()" placeholder="Ax" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-pr-v" oninput="updateConformityPreview()" placeholder="Pr" style="padding: 5px; text-align: center;">
+                                    <input type="text" id="rx-sx-ba-v" oninput="updateConformityPreview()" placeholder="Ba" style="padding: 5px; text-align: center;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h3>Rilascio Documento</h3>
+                        <div class="input-group">
+                            <label>Prescrizione rilasciata da:</label>
+                            <select id="conf-prescrittore" onchange="updateConformityPreview()">
+                                <option value="Oculista">Oculista</option>
+                                <option value="Ottico Optometrista">Ottico Optometrista</option>
+                            </select>
+                        </div>
+                        <div class="input-group"><label>Data di rilascio:</label><input type="date" id="conf-data" onchange="updateConformityPreview()"></div>
+
+                        <button class="btn-primary" style="margin-top: 20px; width: 100%;" onclick="window.generateConformityPDF()"><i class="fas fa-file-pdf"></i> Scarica Dichiarazione PDF</button>
+                    </aside>
+
+                    <button class="mobile-preview-btn desktop-hidden" onclick="toggleConformityPreview()"><i class="fas fa-search-plus"></i> Vedi Anteprima</button>
+
+                    <main class="preview-panel scrollable flex-center" id="conformity-mobile-preview-container">
+                        <button class="close-preview-btn desktop-hidden" onclick="toggleConformityPreview()"><i class="fas fa-times"></i> Chiudi Anteprima</button>
+
+                        <div id="conformity-preview" class="a4-page conformity-doc">
+
+                            <header class="conf-header">
+                                <img id="conf-logo-img" src="assets/logo-placeholder.svg" alt="Logo" class="conf-logo">
+                                <div class="conf-company-info">
+                                    <h2 id="prev-conf-sup-nome">La Tua Azienda</h2>
+                                    <p id="prev-conf-sup-indirizzo">Indirizzo non impostato</p>
+                                    <p id="prev-conf-sup-piva">P.IVA: -</p>
+                                    <p id="prev-conf-sup-contatti">Email: - | Tel. -</p>
+                                </div>
+                            </header>
+
+                            <div class="conf-client-section">
+                                <div class="conf-client-row"><span class="conf-label">Signor/a</span> <span id="prev-conf-nome" class="conf-valore underline-val"></span></div>
+                                <div class="conf-client-row">
+                                    <span class="conf-label">Indirizzo</span> <span id="prev-conf-via" class="conf-valore underline-val"></span>
+                                    <span class="conf-label" style="margin-left: 15px;">Tel.</span> <span id="prev-conf-tel" class="conf-valore underline-val"></span>
+                                </div>
+                                <div class="conf-client-row">
+                                    <span class="conf-label">Città</span> <span id="prev-conf-citta" class="conf-valore underline-val"></span>
+                                    <span class="conf-label" style="margin-left: 15px;">Prov.</span> <span id="prev-conf-prov" class="conf-valore underline-val"></span>
+                                    <span class="conf-label" style="margin-left: 15px;">CF.</span> <span id="prev-conf-cf" class="conf-valore underline-val uppercase-input"></span>
+                                </div>
+                            </div>
+
+                            <div class="conf-legal-text">
+                                <p>Con la presente Dichiaro di essere stato correttamente istruito all'uso e alla manutenzione del Dispositivo Medicale approntatomi. Di aver ricevuto la dichiarazione di conformità N° come da regolamento (UE) 2017/745 correttamente compilata e completa delle Istruzioni per l'uso. I dati personali su riportati sono corrispondenti al vero, e autorizzo il trattamento degli stessi ex D.Lgs. 196/2003, cosi come modificato dal D.Lgs 101/2018, e Reg. UE 2016/679 e s.m.i.</p>
+                                <div class="conf-signatures">
+                                    <div><p>Data</p><div class="signature-line" id="prev-conf-data-firma"></div></div>
+                                    <div><p>Firma Cliente</p><div class="signature-line"></div></div>
+                                </div>
+                            </div>
+
+                            <!-- GRAFICA TABO VETTORIALE -->
+                            <div style="text-align: center; margin: 15px 0;">
+                                <div style="display: flex; justify-content: center; align-items: center; gap: 30px; font-weight: bold; font-family: Arial, sans-serif; font-size: 11px; margin-bottom: 5px;">
+                                    <span>TABO <span id="prev-asse-tabo" class="box-ce" style="width:14px; height:14px; display:inline-block; border:1px solid #000; text-align:center; line-height:14px;">X</span></span>
+                                    <span>INTERNAZIONALE <span id="prev-asse-int" class="box-ce" style="width:14px; height:14px; display:inline-block; border:1px solid #000; text-align:center; line-height:14px;">&nbsp;</span></span>
+                                </div>
+                                <svg width="400" height="110" viewBox="0 0 400 110" xmlns="http://www.w3.org/2000/svg">
+                                    <!-- Occhio Destro -->
+                                    <g transform="translate(100, 95)">
+                                        <path d="M -70 0 A 70 70 0 0 1 70 0" fill="none" stroke="black" stroke-width="1"/>
+                                        <path d="M -45 0 A 45 45 0 0 1 45 0" fill="none" stroke="black" stroke-width="1"/>
+                                        <line x1="-80" y1="0" x2="80" y2="0" stroke="black" stroke-width="1"/>
+                                        <line x1="0" y1="-5" x2="0" y2="5" stroke="black" stroke-width="1"/>
+
+                                        <g transform="rotate(0)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">0</text></g>
+                                        <g transform="rotate(-20)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">20</text></g>
+                                        <g transform="rotate(-40)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">40</text></g>
+                                        <g transform="rotate(-60)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">60</text></g>
+                                        <g transform="rotate(-80)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">80</text></g>
+                                        <g transform="rotate(-100)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">100</text></g>
+                                        <g transform="rotate(-120)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">120</text></g>
+                                        <g transform="rotate(-140)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">140</text></g>
+                                        <g transform="rotate(-160)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">160</text></g>
+                                        <g transform="rotate(-180)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">180</text></g>
+                                    </g>
+
+                                    <!-- Occhio Sinistro -->
+                                    <g transform="translate(300, 95)">
+                                        <path d="M -70 0 A 70 70 0 0 1 70 0" fill="none" stroke="black" stroke-width="1"/>
+                                        <path d="M -45 0 A 45 45 0 0 1 45 0" fill="none" stroke="black" stroke-width="1"/>
+                                        <line x1="-80" y1="0" x2="80" y2="0" stroke="black" stroke-width="1"/>
+                                        <line x1="0" y1="-5" x2="0" y2="5" stroke="black" stroke-width="1"/>
+
+                                        <g transform="rotate(0)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">0</text></g>
+                                        <g transform="rotate(-20)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">20</text></g>
+                                        <g transform="rotate(-40)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">40</text></g>
+                                        <g transform="rotate(-60)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">60</text></g>
+                                        <g transform="rotate(-80)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">80</text></g>
+                                        <g transform="rotate(-100)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">100</text></g>
+                                        <g transform="rotate(-120)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">120</text></g>
+                                        <g transform="rotate(-140)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">140</text></g>
+                                        <g transform="rotate(-160)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">160</text></g>
+                                        <g transform="rotate(-180)"><line x1="45" y1="0" x2="70" y2="0" stroke="black"/><text x="80" y="3" font-size="9" font-family="Arial" text-anchor="middle">180</text></g>
+                                    </g>
+                                </svg>
+                            </div>
+
+                            <div class="conf-tables-section">
+                                <div class="conf-eye-box">
+                                    <h4>OCCHIO DESTRO</h4>
+                                    <table class="conf-table">
+                                        <tr><th></th><th>SFERA</th><th>CIL.</th><th>ASSE</th><th>PRISMA</th><th>BASE</th></tr>
+                                        <tr><td>L</td><td id="prev-rx-dx-sf-l"></td><td id="prev-rx-dx-cil-l"></td><td id="prev-rx-dx-ax-l"></td><td id="prev-rx-dx-pr-l"></td><td id="prev-rx-dx-ba-l"></td></tr>
+                                        <tr><td>V</td><td id="prev-rx-dx-sf-v"></td><td id="prev-rx-dx-cil-v"></td><td id="prev-rx-dx-ax-v"></td><td id="prev-rx-dx-pr-v"></td><td id="prev-rx-dx-ba-v"></td></tr>
+                                    </table>
+                                </div>
+                                <div class="conf-eye-box">
+                                    <h4>OCCHIO SINISTRO</h4>
+                                    <table class="conf-table">
+                                        <tr><th></th><th>SFERA</th><th>CIL.</th><th>ASSE</th><th>PRISMA</th><th>BASE</th></tr>
+                                        <tr><td>L</td><td id="prev-rx-sx-sf-l"></td><td id="prev-rx-sx-cil-l"></td><td id="prev-rx-sx-ax-l"></td><td id="prev-rx-sx-pr-l"></td><td id="prev-rx-sx-ba-l"></td></tr>
+                                        <tr><td>V</td><td id="prev-rx-sx-sf-v"></td><td id="prev-rx-sx-cil-v"></td><td id="prev-rx-sx-ax-v"></td><td id="prev-rx-sx-pr-v"></td><td id="prev-rx-sx-ba-v"></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px; font-size: 11px; font-family: Arial, sans-serif; font-weight: bold;">
+                                <div>D.I. LONTANO mm. <span id="prev-conf-dil" class="box-val" style="display:inline-block; min-width:30px; font-size:12px;"></span></div>
+                                <div>D.I. VICINO mm. <span id="prev-conf-div" class="box-val" style="display:inline-block; min-width:30px; font-size:12px;"></span></div>
+                                <div>LENTI CE <span id="prev-lenti-ce-si" class="ce-box">SÌ</span> <span id="prev-lenti-ce-no" class="ce-box">NO</span></div>
+                                <div>MONTATURA CE <span id="prev-mont-ce-si" class="ce-box">SÌ</span> <span id="prev-mont-ce-no" class="ce-box">NO</span></div>
+                            </div>
+
+                            <div class="conf-container-affiancato">
+                                <div class="conf-blocco-tecnico">
+                                    <h4>MONTATURA</h4>
+                                    <div class="tech-row-flex"><span class="conf-label">Fornitore:</span> <div class="box-val flex-grow" id="prev-mont-forn"></div></div>
+                                    <div class="tech-row-flex"><span class="conf-label">Marca:</span> <div class="box-val flex-grow" id="prev-mont-marca"></div></div>
+                                    <div class="tech-row-flex"><span class="conf-label">Modello:</span> <div class="box-val flex-grow" id="prev-mont-modello"></div></div>
+                                    <div class="tech-row-flex">
+                                        <span class="conf-label">Calibro:</span> <div class="box-val flex-grow" id="prev-mont-calibro"></div>
+                                        <span class="conf-label ml-5">Ponte:</span> <div class="box-val flex-grow" id="prev-mont-ponte"></div>
+                                    </div>
+                                    <div class="tech-row-flex">
+                                        <span class="conf-label">Aste (mm):</span> <div class="box-val flex-grow" id="prev-mont-aste"></div>
+                                        <span class="conf-label ml-5">Colore:</span> <div class="box-val flex-grow" id="prev-mont-colore"></div>
+                                    </div>
+                                </div>
+
+                                <div class="conf-blocco-tecnico">
+                                    <h4>LENTI OFTALMICHE</h4>
+                                    <div class="tech-row-flex"><span class="conf-label">Fornitore:</span> <div class="box-val flex-grow" id="prev-lenti-forn"></div></div>
+                                    <div class="tech-row-flex"><span class="conf-label">Tipo lenti:</span> <div class="box-val flex-grow" id="prev-lenti-tipo"></div></div>
+                                    <div class="tech-row-flex"><span class="conf-label">Mat./Indice:</span> <div class="box-val flex-grow" id="prev-lenti-mat"></div></div>
+                                    <div class="tech-row-flex"><span class="conf-label">Trattamento:</span> <div class="box-val flex-grow" id="prev-lenti-trat"></div></div>
+                                    <div class="tech-row-flex">
+                                        <span class="conf-label">Ø:</span> <div class="box-val flex-grow" id="prev-lenti-dia"></div>
+                                        <span class="conf-label ml-5">Col. %:</span> <div class="box-val flex-grow" id="prev-lenti-col"></div>
+                                        <span class="conf-label ml-5">Filtro:</span> <div class="box-val flex-grow" id="prev-lenti-filtro"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="conf-footer">
+                                <p style="font-size: 13px;">LA PRESCRIZIONE ALLEGATA È STATA RILASCIATA DA: <strong id="prev-conf-prescrittore">Oculista</strong></p>
+                                <p class="small-legal">Il dispositivo medicale è conforme ai requisiti essenziali di sicurezza e salute previsti dal Regolamento UE 2017/745.</p>
+
+                                <div class="footer-signatures" style="display: flex; justify-content: space-between; margin-top: 25px; align-items: flex-end;">
+                                    <div>
+                                        <span class="conf-label" style="font-size: 14px;">DATA</span>
+                                        <span id="prev-conf-data-footer" style="margin-left: 10px; font-size: 14px;"></span>
+                                    </div>
+
+                                    <div style="text-align: center; position: relative;">
+                                        <span class="conf-label" style="font-size: 14px; display: block; margin-bottom: 30px;">L'OTTICO OPTOMETRISTA</span>
+                                        <div style="position: relative; display: inline-block; width: 180px;">
+                                            <img id="firma-img" src="" alt="Firma" style="height: 60px; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); mix-blend-mode: multiply; display:none;">
+                                            <div class="signature-line" style="width: 100%;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </main>
+                </div>
+            </section>
+
+            <!-- TAB IMPOSTAZIONI (nuova, sostituisce integrazione Google Sheets) -->
+            <section id="tab-impostazioni" class="tab-section hidden">
+                <div class="header-action" style="margin-bottom: 20px;">
+                    <h2 style="margin:0; font-size: 24px;">Impostazioni</h2>
+                </div>
+                <div class="settings-container">
+
+                    <div class="settings-warning">
+                        <i class="fas fa-hard-drive"></i> Tutti i dati (clienti, fatture, magazzino, impostazioni) sono salvati esclusivamente <strong>in locale nel browser</strong> di questo dispositivo. Non esiste alcuna sincronizzazione cloud. Usa il backup qui sotto per non perdere i dati o per trasferirli su un altro dispositivo.
+                    </div>
+
+                    <form id="settings-form" onsubmit="saveSettings(event)">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-building"></i> Dati Azienda</h3>
+                            <p class="hint">Questi dati verranno stampati nell'intestazione delle fatture e delle dichiarazioni di conformità.</p>
+                            <div class="input-group"><label>Ragione Sociale / Nome:</label><input type="text" id="set-ragione-sociale" placeholder="es. Studio Ottico Rossi S.r.l."></div>
+                            <div class="input-row">
+                                <div class="input-group"><label>Partita IVA:</label><input type="text" id="set-piva" placeholder="es. IT00000000000"></div>
+                                <div class="input-group"><label>Codice Fiscale:</label><input type="text" id="set-cf" class="uppercase-input" placeholder="es. RSSMRA80A01H501U"></div>
+                            </div>
+                            <div class="input-group"><label>Indirizzo completo:</label><input type="text" id="set-indirizzo" placeholder="es. Via Roma 1, 00100 Roma (RM)"></div>
+                            <div class="input-row">
+                                <div class="input-group"><label>Email:</label><input type="email" id="set-email" placeholder="es. info@tuaazienda.it"></div>
+                                <div class="input-group"><label>Telefono:</label><input type="text" id="set-telefono" placeholder="es. 06 1234567"></div>
+                            </div>
+                            <div class="input-group"><label>Nota regime fiscale (sotto l'intestazione):</label><input type="text" id="set-nota-fiscale" placeholder="es. Regime forfettario art.1 c.54-89 L.190/14"></div>
+                            <div class="input-group"><label>Testo normativo a piè di fattura:</label><input type="text" id="set-nota-legale" placeholder="es. Operazione ai sensi dell'art. 1..."></div>
+                            <div class="input-group"><label>Nota dispositivo medico a piè di fattura (lascia vuoto per nasconderla):</label><input type="text" id="set-nota-dispositivo" placeholder="es. Dispositivo medico con marcatura CE."></div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-image"></i> Logo e Firma</h3>
+                            <p class="hint">Immagini opzionali, salvate anch'esse solo in locale nel browser.</p>
+                            <div class="upload-row">
+                                <div class="upload-preview" id="logo-preview-box"><i class="fas fa-image"></i></div>
+                                <div class="upload-actions">
+                                    <label class="btn-add" for="set-logo-file"><i class="fas fa-upload"></i> Carica Logo</label>
+                                    <input type="file" id="set-logo-file" accept="image/*" style="display:none;" onchange="handleImageUpload(event, 'logo')">
+                                    <button type="button" class="btn-add" onclick="removeBrandImage('logo')"><i class="fas fa-trash"></i> Rimuovi Logo</button>
+                                </div>
+                            </div>
+                            <div class="upload-row">
+                                <div class="upload-preview" id="firma-preview-box"><i class="fas fa-signature"></i></div>
+                                <div class="upload-actions">
+                                    <label class="btn-add" for="set-firma-file"><i class="fas fa-upload"></i> Carica Firma</label>
+                                    <input type="file" id="set-firma-file" accept="image/*" style="display:none;" onchange="handleImageUpload(event, 'firma')">
+                                    <button type="button" class="btn-add" onclick="removeBrandImage('firma')"><i class="fas fa-trash"></i> Rimuovi Firma</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Salva Impostazioni</button>
+                    </form>
+
+                    <div class="settings-section">
+                        <h3><i class="fas fa-database"></i> Backup e Ripristino Dati</h3>
+                        <p class="hint">Esporta periodicamente un backup per non perdere clienti, fatture e magazzino. Puoi importarlo su questo o su un altro dispositivo/browser.</p>
+                        <div class="backup-actions">
+                            <button type="button" class="btn-primary" onclick="exportBackup()"><i class="fas fa-file-export"></i> Esporta Backup (JSON)</button>
+                            <label class="btn-add" for="import-backup-file"><i class="fas fa-file-import"></i> Importa Backup</label>
+                            <input type="file" id="import-backup-file" accept="application/json" style="display:none;" onchange="importBackup(event)">
+                            <button type="button" class="btn-add" style="color:var(--error-color); border-color:var(--error-color);" onclick="resetAllData()"><i class="fas fa-exclamation-triangle"></i> Cancella Tutti i Dati</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODALI -->
+    <div id="client-modal" class="modal-overlay hidden">
+        <div class="modal-content modal-large">
+            <span class="close-modal" onclick="closeClientModal()">&times;</span>
+            <h2 id="modal-client-title">Aggiungi Cliente & Ricetta</h2>
+            <form id="client-form" onsubmit="saveClient(event)">
+                <input type="hidden" id="client-id">
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>Dati Anagrafici & Contatti</h3>
+                        <div class="input-group"><label>Nome / Ragione Sociale *</label><input type="text" id="c-nome" required></div>
+                        <div class="input-row"><div class="input-group"><label>Tipo</label><select id="c-tipo"><option value="fisica">Fisica</option><option value="azienda">Azienda</option></select></div><div class="input-group"><label>C.F.</label><input type="text" id="c-cf" class="uppercase-input"></div></div>
+                        <div class="input-row"><div class="input-group"><label>P.IVA</label><input type="text" id="c-piva"></div><div class="input-group"><label>SDI / PEC</label><input type="text" id="c-sdi"></div></div>
+                        <div class="input-group"><label>Indirizzo</label><input type="text" id="c-via"></div>
+                        <div class="input-row"><div class="input-group"><label>Comune</label><input type="text" id="c-comune"></div><div class="input-group"><label>CAP</label><input type="text" id="c-cap"></div><div class="input-group"><label>Prov</label><input type="text" id="c-prov"></div></div>
+                        <div class="input-row"><div class="input-group" style="flex:1;"><label>Telefono</label><input type="text" id="c-telefono"></div><div class="input-group" style="flex:2;"><label>Note</label><textarea id="c-note" rows="1"></textarea></div></div>
+                    </div>
+                    <div class="form-section">
+                        <h3>Ricetta Oculistica</h3>
+                        <div class="prescription-grid">
+                            <div class="pg-cell header">DESTRO</div><div class="pg-cell header"></div><div class="pg-cell header">SINISTRO</div>
+                            <div class="pg-cell sub-header">Sf &nbsp;&nbsp; Cil &nbsp;&nbsp; Ax</div><div class="pg-cell sub-header"></div><div class="pg-cell sub-header">Sf &nbsp;&nbsp; Cil &nbsp;&nbsp; Ax</div>
+                            <div class="pg-cell inputs-3"><input type="text" id="dx-sf-l"><input type="text" id="dx-cil-l"><input type="text" id="dx-ax-l"></div><div class="pg-cell center-label">LONTANO</div><div class="pg-cell inputs-3"><input type="text" id="sx-sf-l"><input type="text" id="sx-cil-l"><input type="text" id="sx-ax-l"></div>
+                            <div class="pg-cell inputs-3"><input type="text" id="dx-sf-i"><input type="text" id="dx-cil-i"><input type="text" id="dx-ax-i"></div><div class="pg-cell center-label">INTERMEDIO</div><div class="pg-cell inputs-3"><input type="text" id="sx-sf-i"><input type="text" id="sx-cil-i"><input type="text" id="sx-ax-i"></div>
+                            <div class="pg-cell inputs-3"><input type="text" id="dx-sf-v"><input type="text" id="dx-cil-v"><input type="text" id="dx-ax-v"></div><div class="pg-cell center-label">VICINO</div><div class="pg-cell inputs-3"><input type="text" id="sx-sf-v"><input type="text" id="sx-cil-v"><input type="text" id="sx-ax-v"></div>
+                        </div>
+                        <div class="input-row mt-15"><div class="input-group"><label>D.I. Lontano (mm)</label><input type="number" id="dist-lontano"></div><div class="input-group"><label>D.I. Vicino (mm)</label><input type="number" id="dist-vicino"></div></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn-add" onclick="closeClientModal()">Annulla</button><button type="submit" class="btn-primary">Salva Cliente</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="view-ricetta-modal" class="modal-overlay hidden">
+        <div class="modal-content"><span class="close-modal" onclick="closeViewRicettaModal()">&times;</span><h2 style="color: var(--secondary-color); border-bottom: 2px solid var(--secondary-color); padding-bottom: 5px;">Ricetta di: <span id="view-ricetta-nome" style="color:var(--text-color);"></span></h2><div class="prescription-grid read-only-grid mt-15"><div class="pg-cell header">DESTRO</div><div class="pg-cell header"></div><div class="pg-cell header">SINISTRO</div><div class="pg-cell sub-header">Sf &nbsp;&nbsp; Cil &nbsp;&nbsp; Ax</div><div class="pg-cell sub-header"></div><div class="pg-cell sub-header">Sf &nbsp;&nbsp; Cil &nbsp;&nbsp; Ax</div><div class="pg-cell inputs-3"><span id="v-dx-sf-l"></span><span id="v-dx-cil-l"></span><span id="v-dx-ax-l"></span></div><div class="pg-cell center-label">LONTANO</div><div class="pg-cell inputs-3"><span id="v-sx-sf-l"></span><span id="v-sx-cil-l"></span><span id="v-sx-ax-l"></span></div><div class="pg-cell inputs-3"><span id="v-dx-sf-i"></span><span id="v-dx-cil-i"></span><span id="v-dx-ax-i"></span></div><div class="pg-cell center-label">INTERMEDIO</div><div class="pg-cell inputs-3"><span id="v-sx-sf-i"></span><span id="v-sx-cil-i"></span><span id="v-sx-ax-i"></span></div><div class="pg-cell inputs-3"><span id="v-dx-sf-v"></span><span id="v-dx-cil-v"></span><span id="v-dx-ax-v"></span></div><div class="pg-cell center-label">VICINO</div><div class="pg-cell inputs-3"><span id="v-sx-sf-v"></span><span id="v-sx-cil-v"></span><span id="v-sx-ax-v"></span></div></div><div class="input-row mt-15 info-box-read"><p><strong>Distanza Interpupillare Lontano:</strong> <span id="v-dist-lontano"></span> mm</p><p><strong>Distanza Interpupillare Vicino:</strong> <span id="v-dist-vicino"></span> mm</p></div><div class="modal-footer"><button type="button" class="btn-primary" onclick="closeViewRicettaModal()">Chiudi</button></div></div>
+    </div>
+    <div id="toast-container"></div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
